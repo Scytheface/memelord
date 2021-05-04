@@ -3,9 +3,9 @@ from datetime import datetime
 import scrapy
 
 
-class KYMSpider(scrapy.Spider):
-    collection = 'KYM'
-    name = 'KYMSpider'
+class KnowYourMeme(scrapy.Spider):
+    collection = 'KnowYourMeme'
+    name = 'KnowYourMeme'
     allowed_domains = ['knowyourmeme.com']
     base_url = 'https://knowyourmeme.com'
     start_urls = ['https://knowyourmeme.com/memes?sort=oldest']
@@ -15,8 +15,8 @@ class KYMSpider(scrapy.Spider):
         header = response.xpath('//article[@class="entry"]/header')
         image = header.xpath('div[@class="photo-wrapper"]/a[@class="full-image"]/@href').get()
         info = header.xpath('section[contains(@class, "info")]')
-        *_, added, updated = [None] + [datetime.fromisoformat(ts.get()).timestamp()
-                                       for ts in info.xpath('.//abbr[@class="timeago"]/@title')]
+        *_, updated = [datetime.fromisoformat(ts.get()).timestamp()
+                       for ts in info.xpath('.//abbr[@class="timeago"]/@title')]
         # TODO: skip if not updated
 
         title = info.xpath('h1/text()').get().strip()
@@ -24,9 +24,9 @@ class KYMSpider(scrapy.Spider):
         entry = {
             'title': title,
             'url': response.url,
-            'last_update': int(updated),
+            'last_update_source': int(updated),
             'category': category,
-            'image_url': image
+            'template_image_url': image
         }
 
         parent = info.xpath('.//span[contains(text(), "Part of a series on")]/a/@href').get()
@@ -102,5 +102,5 @@ if __name__ == '__main__':
 
     configure_logging()
     runner = CrawlerRunner(get_project_settings())
-    runner.crawl(KYMSpider).addBoth(lambda _: reactor.stop())
+    runner.crawl(KnowYourMeme).addBoth(lambda _: reactor.stop())
     reactor.run()

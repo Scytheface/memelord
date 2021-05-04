@@ -8,15 +8,21 @@
 from itemadapter import ItemAdapter
 import pymongo
 
+
 class MongoPipeline:
     def open_spider(self, spider):
         self.client = pymongo.MongoClient(spider.settings.get('MONGO_URI'))
         self.collection = self.client[spider.settings.get('MONGO_DB')][spider.collection]
-        self.collection.create_index('url', unique=True)
+        self.collection.create_index('url', unique=True)  # using the url as index
 
     def close_spider(self, _):
         self.client.close()
 
     def process_item(self, item, _):
-        self.collection.replace_one({'url': item['url']}, item, upsert=True)
+        self.collection.update_one({'url': item['url']},
+                                   {"$set": item,
+                                    "$setOnInsert": {
+                                        'last_update_samples': 0,
+                                        'last_update_text_entities': 0}},
+                                   upsert=True)
         return item
