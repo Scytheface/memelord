@@ -18,11 +18,11 @@ MONGO_DB
 `MONGO_DB` Should contain the specific mongo database to use.  
 Both mongo environment variables need to be set for it to be used.
 
-Setup:
+Setup:  
 `pip install -r requirements.txt`
 
-To start crawling:
+To start crawling:  
 `scrapy crawl <crawler>`
 
-To store crawled data in a json file:
+To store crawled data in a json file:  
 `scrapy crawl <crawler> -o <filename>.json`
