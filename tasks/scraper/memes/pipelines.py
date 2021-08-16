@@ -12,7 +12,7 @@ import pymongo
 class MongoPipeline:
     def open_spider(self, spider):
         self.client = pymongo.MongoClient(spider.settings.get('MONGO_URI'))
-        self.collection = self.client[spider.settings.get('MONGO_DB')][spider.collection]
+        self.collection = self.client[spider.settings.get('MONGO_DB')][spider.name]
         self.collection.create_index('url', unique=True)  # using the url as index
 
     def close_spider(self, _):

@@ -10,6 +10,7 @@ import os  # for environment variables
 
 if SCRAPER_API_KEY := os.getenv('SCRAPER_API_KEY'):
     CONCURRENT_REQUESTS = 10
+    CONCURRENT_REQUESTS_PER_DOMAIN = 10
     DOWNLOADER_MIDDLEWARES = {
         'memes.middlewares.ScraperapiProxyMiddleware': 350,
     }
@@ -19,6 +20,11 @@ if (MONGO_URI := os.getenv('MONGO_URI')) and (MONGO_DB := os.getenv('MONGO_DB'))
         'memes.pipelines.MongoPipeline': 420
     }
 
+LOG_FILE = os.getenv('LOG_FILE')
+
+FEED_EXPORT_ENCODING = 'utf-8'
+
+RETRY_TIMES = 4
 
 BOT_NAME = 'memes'
 
