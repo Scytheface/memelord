@@ -9,8 +9,8 @@
 import os  # for environment variables
 
 if SCRAPER_API_KEY := os.getenv('SCRAPER_API_KEY'):
-    CONCURRENT_REQUESTS = 10
-    CONCURRENT_REQUESTS_PER_DOMAIN = 10
+    CONCURRENT_REQUESTS = 20
+    CONCURRENT_REQUESTS_PER_DOMAIN = 20
     DOWNLOADER_MIDDLEWARES = {
         'memes.middlewares.ScraperapiProxyMiddleware': 350,
     }
