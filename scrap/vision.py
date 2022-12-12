@@ -17,20 +17,20 @@ if not SCRAPER_API_KEY:
     raise RuntimeError("Missing environment variables")
 
 DEFAULT_MAX = 1000  # no limit seems to be enforced, however the return count for each feature is <= limit
-features = [  # perhaps set in some configuration?
+features = [
     vision.Feature(type_=type_, max_results=max_) for type_, max_ in [
-        # (1, DEFAULT_MAX),   # face detection
-        # (2, DEFAULT_MAX),   # landmark detection
-        # (3, DEFAULT_MAX),   # logo detection
+        (1, DEFAULT_MAX),   # face detection
+        (2, DEFAULT_MAX),   # landmark detection
+        (3, DEFAULT_MAX),   # logo detection
         (4, DEFAULT_MAX),  # label detection
-        # (5, DEFAULT_MAX),  # text detection
+        (5, DEFAULT_MAX),  # text detection
         (6, DEFAULT_MAX),   # safe search detection
-        # (7, DEFAULT_MAX),   # image properties
-        # (9, DEFAULT_MAX),   # crop hints
+        (7, DEFAULT_MAX),   # image properties
+        (9, DEFAULT_MAX),   # crop hints
         (10, DEFAULT_MAX),  # web detection
-        # (11, DEFAULT_MAX),  # document text detection
-        # (12, DEFAULT_MAX),  # product search
-        # (19, DEFAULT_MAX)  # object localization
+        (11, DEFAULT_MAX),  # document text detection
+        (12, DEFAULT_MAX),  # product search
+        (19, DEFAULT_MAX)  # object localization
     ]
 ]
 
@@ -38,11 +38,12 @@ write_queue = Queue()
 
 vision_client = vision.ImageAnnotatorClient()
 
-stats = {'writes': 0, 'images_read': 0, 'batch_requests_sent': 0, 'batch_requests_done': 0, 'images_queued': 0, 'fetches_live': 0, 'current_batch': 0,
+stats = {'writes': 0, 'images_read': 0, 'batch_requests_sent': 0, 'batch_requests_done': 0,
+         'images_queued': 0, 'fetches_live': 0, 'current_batch': 0,
          'skipped': 0, 'failing': 0}
 
 def to_file():
-    with open("kym_vision5.json", 'a', encoding='utf8') as f:
+    with open("kym_vision22_03_2022.json", 'a', encoding='utf8') as f:
         f.write("{\n")
         while True:
             data = write_queue.get()
@@ -53,17 +54,18 @@ def to_file():
         f.write("}")
 
 def images():
-    with open('kym_vision3.json', encoding='utf8') as f:
-        keys = json.load(f).keys()
-    with open('KYM.json', encoding='utf8') as f:
+    #with open('kym_vision22_03_2022.json', encoding='utf8') as f:
+    #    keys = json.load(f).keys()
+    keys = {}
+    with open(r'A:\Projects\PycharmProjects\memelord\tasks\scraper\memes\spiders\kym21_03_2022.json', encoding='utf8') as f:
         kym = json.load(f)
         print("kym length:",len(kym))
         print("vision length:", len(keys))
-        for entry in kym:
+        for entry in kym[::-1]:
             if entry['url'] in keys:
                 stats['skipped'] += 1
                 continue
-            yield entry['url'], entry['template_image_url']
+            yield entry['url'], entry['meta']['og:image']
             stats['images_read'] += 1
 
 
@@ -93,12 +95,12 @@ async def batch_maker(image_queue):
         if image:
             stats['current_batch'] += 1
             batch.append((_id, image))
-    await asyncio.gather(coros)
+    await asyncio.gather(*coros)
 
-async def printer():
+async def printer(semaphore):
     while True:
         msg = '\t'.join(f"{key}:\t{value}" for key, value in stats.items())
-        print(f"\r{msg}", end='')
+        print(f"\r{msg}\tsem: {semaphore._value}", end='')
         await asyncio.sleep(1)
 
 async def main():
@@ -106,7 +108,7 @@ async def main():
     image_queue = asyncio.Queue()
     _batch_maker = asyncio.create_task(batch_maker(image_queue))
     _to_file = asyncio.create_task(asyncio.to_thread(to_file))
-    _printer = asyncio.create_task(printer())
+    _printer = asyncio.create_task(printer(semaphore))
 
     client = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False))
 
@@ -136,14 +138,15 @@ async def main():
                 stats['failing'] -= 1
         except:
             pass
-        semaphore.release()
+        finally:
+            semaphore.release()
 
     coros = []
     for _id, img_url in images():
         await semaphore.acquire()
         coros.append(asyncio.create_task(_fetch(_id, img_url)))
     print("all queued")
-    await asyncio.gather(coros)
+    await asyncio.gather(*coros)
     print("gathered")
     await image_queue.put((None, None))
     print("poisoned")

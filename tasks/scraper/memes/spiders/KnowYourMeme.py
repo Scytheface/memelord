@@ -15,8 +15,6 @@ class KnowYourMeme(scrapy.Spider):
     base_url = 'https://knowyourmeme.com'
     start_urls = ['https://knowyourmeme.com/memes/all?sort=oldest']
 
-    relation_cache = {}
-
     def parse_entry(self, response: scrapy.http.Response):
 
         header = response.xpath('//article[@class="entry"]/header')
@@ -52,8 +50,6 @@ class KnowYourMeme(scrapy.Spider):
             entry['parent'] = self.base_url + parent
             yield response.follow(parent, callback=self.parse_entry)
 
-        siblings = info.xpath('.//p[@class="parent"]/a/@href').get()
-        children = info.xpath('.//p[@class="children"]/a/@href').get()
 
         entry['details'] = {}
         for div in info.xpath('div[@class="details"]//div[@class="detail"]'):
@@ -112,53 +108,8 @@ class KnowYourMeme(scrapy.Spider):
             keywords = re.findall("\"keyword\":\"(.+?)\",\"geo", search_interest)
             entry['search_keywords'] = keywords
 
-        entry_done = True
-        if children:
-            child_list = []
-            entry['children'] = child_list
-            entry['children_done'] = False
-            if children in self.relation_cache and self.relation_cache[children]['done']:
-                logging.debug(f"existing relations from: {children}")
-                child_list.extend(self.relation_cache[children])
-            else:
-                entry_done = False
-                yield response.follow(children, self.parse_relation, cb_kwargs={'future': child_future, 'key': children},
-                                      errback=lambda _: child_future.set_result(False))
-        if siblings:
-            sibling_list = []
-            entry['siblings'] = sibling_list
-            entry['siblings_done'] = False
-            if siblings in self.relation_cache and self.relation_cache[siblings]['done']:
-                logging.debug(f"existing relations from: {siblings}")
-                sibling_list.extend(self.relation_cache[siblings])
-            else:
-                entry_done = False
-                yield response.follow(siblings, self.parse_relation, cb_kwargs={'future': sibling_future, 'key': siblings},
-                                      errback=lambda _: sibling_future.set_result(False))
-        if futures:
-            logging.debug("awaiting futs")
-            concurrent.futures.wait(futures)
-            logging.debug("got futs")
-            if children:
-                logging.debug(f"got relations for: {children}")
-                entry['children'] = self.relation_cache[children]
-            if siblings:
-                logging.debug(f"got relations for: {siblings}")
-                entry['siblings'] = self.relation_cache[siblings]
-        if entry_done:
-            yield entry
+        yield entry
 
-    def parse_relation(self, response: scrapy.http.Response, future, key):
-        logging.debug(f"parsing relations: {key}")
-        self.relation_cache.setdefault(key, set()).update(self.base_url + path.get() for path in
-                                              response.xpath('//table[@class="entry_list"]//td/h2/a/@href'))
-        next_page = response.xpath('//a[@rel="next"]/@href').get()
-        if next_page:
-            yield response.follow(next_page, self.parse_relation, cb_kwargs=response.cb_kwargs,
-                                  errback=lambda _: future.set_result(False))
-        else:
-            logging.debug(f"relations done: {key}")
-            future.set_result(True)
 
     def parse(self, response: scrapy.http.Response, **_):
         yield from (scrapy.Request(self.base_url + path.get(), callback=self.parse_entry)

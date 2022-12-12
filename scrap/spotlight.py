@@ -52,7 +52,7 @@ def to_file():
 
 
 def texts():
-    with open('kym.json', 'r', encoding='utf8') as f:
+    with open('old/kym.json', 'r', encoding='utf8') as f:
         for item in json.load(f):
             url = item['url']
             text = item.get('content', {}).get('about', {}).get('text')
